@@ -6,12 +6,14 @@ import chardet
 
 from calibre.customize import FileTypePlugin
 from .config import get_words_per_line, plugin_prefs, get_merge_paragraphs
+from .epub_split import process_epub
+
 from PyQt5.Qt import QWidget, QVBoxLayout, QLabel, QSpinBox, QCheckBox
 
 DEBUG = False
 DEBUGGER_PORT = 5555
 
-VERSION = (1, 0, 26)
+VERSION = (1, 0, 27)
 
 if DEBUG:
     from calibre.rpdb import set_trace
@@ -39,7 +41,7 @@ class ConfigWidget(QWidget):
         layout.addWidget(self.words_per_line_spinbox)
 
         # Добавляем чекбокс для флага объединения абзацев
-        self.merge_paragraphs_checkbox = QCheckBox('Объединять все абзацы перед разбиением')
+        self.merge_paragraphs_checkbox = QCheckBox('Объединить все абзацы перед разбиением')
         layout.addWidget(self.merge_paragraphs_checkbox)
 
         self.setLayout(layout)
@@ -71,16 +73,33 @@ class SplitParagraphsPlugin(FileTypePlugin):
         plugin_prefs['merge_before_splitting'] = config_widget.merge_paragraphs_checkbox.isChecked()
 
     def run(self, path_to_ebook):
-        words_per_line = get_words_per_line()
-        merge_paragraphs = get_merge_paragraphs()
-
-        logging.info(f"[Split paragraphs plugin] words per line: {words_per_line}, merge_paragraphs: {merge_paragraphs}")
-
         self.split_book(path_to_ebook)
 
         logging.info("[Split paragraphs plugin] done")
 
         return path_to_ebook
+    
+    @staticmethod
+    def split_txt_book(path_to_ebook):
+        encoding = detect_encoding(path_to_ebook)
+
+        logging.info(f"[Split paragraphs plugin] detected encoding: {encoding}")
+
+        # with open(path_to_ebook, 'r', encoding=encoding, errors='replace') as f:
+        with open(path_to_ebook, 'r') as f:
+            logging.info(f"[Split paragraphs plugin] opened file")
+
+            content = f.read()
+
+            new_content = split_paragraphs2(content)
+
+            try:
+                with open(path_to_ebook, 'w', encoding='utf-8') as file:
+                    file.write(new_content)
+
+                    logging.info(f"[Split paragraphs plugin] successfully written new contents")
+            except Exception as e:
+                logging.exception(f"[Split paragraphs plugin] error opening and writing file: {e}")
 
     @staticmethod
     def split_book(path_to_ebook):
@@ -92,6 +111,11 @@ class SplitParagraphsPlugin(FileTypePlugin):
         :return: path_to_ebook: string
         """
 
+        words_per_line = get_words_per_line()
+        merge_paragraphs = get_merge_paragraphs()
+
+        logging.info(f"[Split paragraphs plugin] words per line: {words_per_line}, merge_paragraphs: {merge_paragraphs}")
+
         logging.info("[Split paragraphs plugin] starting to split paragraphs...")
 
         try:
@@ -102,25 +126,10 @@ class SplitParagraphsPlugin(FileTypePlugin):
             if ext not in ['.txt', '.epub']:
                 raise ValueError(f"Unsupported file type: {ext}")
 
-            encoding = detect_encoding(path_to_ebook)
-
-            logging.info(f"[Split paragraphs plugin] detected encoding: {encoding}")
-
-            # with open(path_to_ebook, 'r', encoding=encoding, errors='replace') as f:
-            with open(path_to_ebook, 'r') as f:
-                logging.info(f"[Split paragraphs plugin] opened file")
-
-                content = f.read()
-
-                new_content = split_paragraphs2(content)
-
-                try:
-                    with open(path_to_ebook, 'w', encoding='utf-8') as file:
-                        file.write(new_content)
-
-                        logging.info(f"[Split paragraphs plugin] successfully written new contents")
-                except Exception as e:
-                    logging.exception(f"[Split paragraphs plugin] error opening and writing file: {e}")
+            if ext == ".txt":
+                self.split_txt_book(path_to_ebook)
+            elif ext == ".epub":
+                process_epub(path_to_ebook, words_per_line, merge_paragraphs)
 
         except Exception as e:
             logging.exception(f"[Split paragraphs plugin] An error occurred: {e}")
