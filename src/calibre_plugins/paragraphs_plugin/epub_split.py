@@ -151,7 +151,7 @@ def split_paragraph_into_lines(paragraph_text, line_len):
 unconditional_abbreviations = set([
     # Русские сокращения
     'т.к.', 'т.е.', 'т.н.', 'г.', 'ул.', 'д.', 'рис.', 'табл.', 'стр.', 'п.', 'ч.', 'см.',
-    'лат.', 'рус.', 'англ.', 'прим.', 'пер.', 'исп.',
+    'лат.', 'рус.', 'англ.', 'прим.', 'пер.', 'исп.', 'франц.',
     # Английские сокращения
     'e.g.', 'i.e.', 'mr.', 'mrs.', 'ms.', 'dr.', 'prof.', 'fig.', 'vs.', 'sr.', 'jr.'
 ])
@@ -236,7 +236,7 @@ def is_abbreviation(paragraph_text: str, i: int) -> bool:
 
 def split_paragraph_into_sentences(paragraph_text) -> List[str]:
     """
-    Разбивает текст абзаца предложения.
+    Разбивает текст абзаца на предложения.
     Разбиение происходит по завершающим знакам пунктуации: .!?
     При этом завершающие знаки пунктуации исключаются (не считаются) в следующих случаях, если:
       * идут после сокращений (см. функцию is_abbreviation);
@@ -254,7 +254,6 @@ def split_paragraph_into_sentences(paragraph_text) -> List[str]:
     i = 0                      # Текущая позиция в тексте
     length = len(paragraph_text)
     tag_stack = []             # Стек для отслеживания открытых тегов
-    inside_attribute = False   # Флаг, показывающий, находимся ли мы внутри значения атрибута
 
     while i < length:
         char = paragraph_text[i]
@@ -280,14 +279,6 @@ def split_paragraph_into_sentences(paragraph_text) -> List[str]:
                     # Это открывающий тег
                     tag_stack.append(tag_content)
                 i = end_tag_pos  # Перемещаем позицию i на конец тега
-        elif char in '"\'':
-            # Обработка кавычек внутри тегов (значения атрибутов)
-            quote_char = char
-            i += 1
-            # Пропускаем все символы до следующей такой же кавычки
-            while i < length and paragraph_text[i] != quote_char:
-                i += 1
-            # Теперь мы находимся на закрывающей кавычке
         elif char in '.!?':
             # --- Обработка завершающих знаков пунктуации ---
             should_split = True  # Флаг, показывающий, нужно ли разделять предложение
