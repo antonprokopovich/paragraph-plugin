@@ -489,6 +489,18 @@ class TestIsAbbreviation(unittest.TestCase):
         position = text.find('т.п.') + 3
         result = is_abbreviation(text, position)
         self.assertFalse(result)  # Следующее слово "Теперь" с заглавной буквы
+    
+    def test_initials_with_spaces(self):
+        text = 'Известный поэт А. С. Пушкин.'
+        position = text.find('А. С.')
+        result = is_abbreviation(text, position + 4)  # Индекс последней точки в инициале
+        self.assertTrue(result)
+
+    def test_initials_without_spaces(self):
+        text = 'Известный поэт А.С. Пушкин.'
+        position = text.find('А.С.')
+        result = is_abbreviation(text, position + 3)  # Индекс последней точки в инициале
+        self.assertTrue(result)
 
 class TestProcessEpubHtml(unittest.TestCase):
     def test_short_paragraph(self):
