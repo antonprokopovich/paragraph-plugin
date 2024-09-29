@@ -151,6 +151,7 @@ def split_paragraph_into_lines(paragraph_text, line_len):
 unconditional_abbreviations = set([
     # Русские сокращения
     'т.к.', 'т.е.', 'т.н.', 'г.', 'ул.', 'д.', 'рис.', 'табл.', 'стр.', 'п.', 'ч.', 'см.',
+    'лат.', 'рус.', 'англ.', 'прим.', 'пер.', 'исп.',
     # Английские сокращения
     'e.g.', 'i.e.', 'mr.', 'mrs.', 'ms.', 'dr.', 'prof.', 'fig.', 'vs.', 'sr.', 'jr.'
 ])
@@ -497,8 +498,8 @@ def process_epub(epub_path, line_len=10, merge_before_splitting=False, backuping
     - Пересобирает измененное содержимое обратно в EPUB файл, перезаписывая оригинальный файл.
     - Создает резервную копию оригинального EPUB файла с расширением '.bak' в той же директории, где лежит оригинал.
     """
-    valid_extensions = {'html', 'htm', 'xhtml'}
-    
+    valid_extensions = {'html', 'htm', 'xhtml', 'xht'}
+
     # Работаем с копией книги во временной директории
     with tempfile.TemporaryDirectory() as tmpdirname:
         # Извлекаем содержимое epub файла во временную директорию
