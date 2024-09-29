@@ -5,11 +5,13 @@ import chardet
 # from nltk import tokenize
 
 from calibre.customize import FileTypePlugin
+from .config import get_words_per_line, plugin_prefs, get_merge_paragraphs
+from PyQt5.Qt import QWidget, QVBoxLayout, QLabel, QSpinBox, QCheckBox
 
 DEBUG = False
 DEBUGGER_PORT = 5555
 
-VERSION = (1, 0, 21)
+VERSION = (1, 0, 26)
 
 if DEBUG:
     from calibre.rpdb import set_trace
@@ -21,6 +23,28 @@ logging.basicConfig(
     level=logging.DEBUG
 )
 
+class ConfigWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        layout = QVBoxLayout()
+
+        # Добавляем текстовое описание
+        label = QLabel('Количество слов в строке:')
+        layout.addWidget(label)
+
+        # Добавляем виджет выбора числа слов в строке
+        self.words_per_line_spinbox = QSpinBox()
+        self.words_per_line_spinbox.setMinimum(1)
+        self.words_per_line_spinbox.setMaximum(100)
+        layout.addWidget(self.words_per_line_spinbox)
+
+        # Добавляем чекбокс для флага объединения абзацев
+        self.merge_paragraphs_checkbox = QCheckBox('Объединять все абзацы перед разбиением')
+        layout.addWidget(self.merge_paragraphs_checkbox)
+
+        self.setLayout(layout)
+
+
 class SplitParagraphsPlugin(FileTypePlugin):
     name = 'Split Paragraphs Plugin'
     description = 'Splits text into paragraphs of 4 lines.'
@@ -30,7 +54,28 @@ class SplitParagraphsPlugin(FileTypePlugin):
     file_types = {'txt', 'epub'}
     on_postprocess = True  # Run this plugin after conversion is complete
 
+    def is_customizable(self):
+        return True
+
+    def config_widget(self):
+        # Настройки для виджета конфигурации
+        widget = ConfigWidget()
+        widget.words_per_line_spinbox.setValue(get_words_per_line())
+        widget.merge_paragraphs_checkbox.setChecked(get_merge_paragraphs())
+
+        return widget
+
+    def save_settings(self, config_widget):
+        # Сохраняем новые значения настроек
+        plugin_prefs['words_per_line'] = config_widget.words_per_line_spinbox.value()
+        plugin_prefs['merge_before_splitting'] = config_widget.merge_paragraphs_checkbox.isChecked()
+
     def run(self, path_to_ebook):
+        words_per_line = get_words_per_line()
+        merge_paragraphs = get_merge_paragraphs()
+
+        logging.info(f"[Split paragraphs plugin] words per line: {words_per_line}, merge_paragraphs: {merge_paragraphs}")
+
         self.split_book(path_to_ebook)
 
         logging.info("[Split paragraphs plugin] done")
