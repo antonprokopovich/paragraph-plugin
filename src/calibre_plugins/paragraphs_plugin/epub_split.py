@@ -497,6 +497,8 @@ def process_epub(epub_path, line_len=10, merge_before_splitting=False, backuping
     - Пересобирает измененное содержимое обратно в EPUB файл, перезаписывая оригинальный файл.
     - Создает резервную копию оригинального EPUB файла с расширением '.bak' в той же директории, где лежит оригинал.
     """
+    valid_extensions = {'html', 'htm', 'xhtml'}
+    
     # Работаем с копией книги во временной директории
     with tempfile.TemporaryDirectory() as tmpdirname:
         # Извлекаем содержимое epub файла во временную директорию
@@ -506,7 +508,7 @@ def process_epub(epub_path, line_len=10, merge_before_splitting=False, backuping
         # Проходим по извлеченным файлам (рекурсивно)
         for root, dirs, files in os.walk(tmpdirname):
             for file in files:
-                if file.lower().endswith('.html') or file.lower().endswith('.htm'):
+                if file.lower().split('.')[-1] in valid_extensions:
                     file_path = os.path.join(root, file)
 
                     with open(file_path, 'r', encoding='utf-8') as f:
@@ -538,6 +540,7 @@ if __name__ == "__main__":
     parser.add_argument('epub_path', help='Путь к EPUB файлу для обработки.')
     parser.add_argument('-l', '--line_len', type=int, default=10, help='Максимальное количество слов в строке абзацев.')
     parser.add_argument('-m', '--merge', action='store_true', help='Объединить все абзацы перед последующим разбиением.')
+    parser.add_argument('-b', '--backup', action='store_true', help='Делать ли backup перед форматированием.')
 
     # Добавьте дополнительные аргументы здесь, если потребуется в будущем
     args = parser.parse_args()

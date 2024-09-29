@@ -13,7 +13,7 @@ from PyQt5.Qt import QWidget, QVBoxLayout, QLabel, QSpinBox, QCheckBox
 DEBUG = False
 DEBUGGER_PORT = 5555
 
-VERSION = (1, 0, 27)
+VERSION = (1, 0, 28)
 
 if DEBUG:
     from calibre.rpdb import set_trace
