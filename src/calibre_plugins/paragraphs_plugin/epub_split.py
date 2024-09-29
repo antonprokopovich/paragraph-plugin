@@ -237,7 +237,7 @@ def is_abbreviation(paragraph_text: str, i: int) -> bool:
 def split_paragraph_into_sentences(paragraph_text) -> List[str]:
     """
     Разбивает текст абзаца на предложения.
-    Разбиение происходит по завершающим знакам пунктуации: .!?
+    Разбиение происходит по завершающим знакам пунктуации: .!?…
     При этом завершающие знаки пунктуации исключаются (не считаются) в следующих случаях, если:
       * идут после сокращений (см. функцию is_abbreviation);
       * разделяют цифры (без пробелов), например, числа с плавающей точкой;
@@ -245,6 +245,7 @@ def split_paragraph_into_sentences(paragraph_text) -> List[str]:
       * находятся внутри тегов, которые еще не закрыты (чтобы не ломать верстку);
       * после которых идут сразу другие завершающие знаки пунктуации (например, в тексте можно встретить "!!!" 
         или "!?" или "...");
+      * внутри незакрытых кавычек;
 
     :param paragraph_text: Текст абзаца для разбиения.
     :return: Список строк-предложений.
@@ -254,6 +255,8 @@ def split_paragraph_into_sentences(paragraph_text) -> List[str]:
     i = 0                      # Текущая позиция в тексте
     length = len(paragraph_text)
     tag_stack = []             # Стек для отслеживания открытых тегов
+    inside_quotes = False      # Флаг, показывающий, находимся ли мы внутри незакрытых кавычек
+    last_splitting_idx = 0
 
     while i < length:
         char = paragraph_text[i]
@@ -279,7 +282,19 @@ def split_paragraph_into_sentences(paragraph_text) -> List[str]:
                     # Это открывающий тег
                     tag_stack.append(tag_content)
                 i = end_tag_pos  # Перемещаем позицию i на конец тега
-        elif char in '.!?':
+        elif char in '"':
+            # Обработка кавычек
+            if inside_quotes:
+                # Если уже внутри кавычек, проверяем на закрытие
+                inside_quotes = False  # Закрываем кавычки
+            else:
+                # Если это открывающая кавычка
+                inside_quotes = True  # Устанавливаем флаг, что мы внутри кавычек
+        elif char in '«“':
+            inside_quotes = True
+        elif char in '»”':
+            inside_quotes = False
+        elif char in '.!?…':
             # --- Обработка завершающих знаков пунктуации ---
             should_split = True  # Флаг, показывающий, нужно ли разделять предложение
 
@@ -296,8 +311,16 @@ def split_paragraph_into_sentences(paragraph_text) -> List[str]:
                 should_split = False  # Не разделяем внутри незакрытого тега
 
             # 4. Проверка на множественные знаки пунктуации
-            elif i + 1 < length and paragraph_text[i + 1] in '.!?':
+            elif i + 1 < length and paragraph_text[i + 1] in '.!?…':
                 should_split = False  # Не разделяем, если сразу несколько знаков
+
+            # 5. Проверка на незакрытые кавычки
+            elif inside_quotes:
+                should_split = False  # Не разделяем внутри незакрытых кавычек
+                # Если кавычки не закрывались слишком долго, то считаем, что автор их забыл закрыть
+                if i - sentence_start > 200:
+                    inside_quotes = False
+                    should_split = True
 
             if should_split:
                 # Если все проверки пройдены и нужно разделить предложение

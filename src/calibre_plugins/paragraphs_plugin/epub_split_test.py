@@ -386,30 +386,30 @@ class TestSplitParagraphIntoSentences(unittest.TestCase):
         self.assertEqual(sentences, expected)
     
     def test_unclosed_double_quotes(self):
-        paragraph = 'Тест "незакрытые кавычки. Предложение не разбивается? Но это должно быть отдельным!'
+        paragraph = f'Тест "незакрытые кавычки {"a"*200}. Предложение не разбивается? Но это должно быть отдельным!'
         sentences = split_paragraph_into_sentences(paragraph)
         expected = [
-            'Тест "незакрытые кавычки.',
+            f'Тест "незакрытые кавычки {"a"*200}.',
             'Предложение не разбивается?',
             'Но это должно быть отдельным!'
         ]
         self.assertEqual(sentences, expected)
 
     def test_unclosed_single_quotes(self):
-        paragraph = "Тест 'незакрытые кавычки. Предложение не разбивается? Но это должно быть отдельным!"
+        paragraph = f'Тест «незакрытые кавычки {"a"*200}. Предложение не разбивается? Но это должно быть отдельным!'
         sentences = split_paragraph_into_sentences(paragraph)
         expected = [
-            "Тест 'незакрытые кавычки.",
+            f'Тест «незакрытые кавычки {"a"*200}.',
             'Предложение не разбивается?',
             'Но это должно быть отдельным!'
         ]
         self.assertEqual(sentences, expected)
 
     def test_mixed_unclosed_quotes(self):
-        paragraph = 'Тест "незакрытые кавычки и \'смешанные кавычки. Предложение не разбивается? Но это должно быть отдельным!'
+        paragraph = f'Тест "незакрытые кавычки и “смешанные кавычки {"a"*200}. Предложение не разбивается? Но это должно быть отдельным!'
         sentences = split_paragraph_into_sentences(paragraph)
         expected = [
-            'Тест "незакрытые кавычки и \'смешанные кавычки.',
+            f'Тест "незакрытые кавычки и “смешанные кавычки {"a"*200}.',
             'Предложение не разбивается?',
             'Но это должно быть отдельным!'
         ]
