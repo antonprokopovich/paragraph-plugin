@@ -314,6 +314,13 @@ def merge_adjacent_paragraphs(soup):
         current_p = paragraphs[i]
         next_p = paragraphs[i + 1]
 
+        # Проверяем, начинается ли текст next_p с дефиса или тире, игнорируя пробелы, неразрывные пробелы и табуляции
+        current_text = current_p.get_text().lstrip()
+        next_text = next_p.get_text().lstrip()
+        if re.match(r'^[-–—]', current_text) or re.match(r'^[-–—]', next_text):  # Проверяем на дефис или тире
+            i += 1
+            continue
+
         # Проверяем, находятся ли теги на одном уровне
         if current_p.parent != next_p.parent:
             i += 1
@@ -340,7 +347,7 @@ def merge_adjacent_paragraphs(soup):
             current_style = ''
         if next_style is None:
             next_style = ''
-
+        
         # Сравниваем атрибуты
         if current_class == next_class and current_style == next_style:
             # Объединяем содержимое тегов
@@ -358,7 +365,7 @@ def merge_adjacent_paragraphs(soup):
             # Переходим к следующей паре тегов
             i += 1
 
-def process_epub_html(html_content, max_len=10, merge_before_splitting=False):
+def process_epub_html(html_content, max_len=10, merge_before_splitting=False, split_dialogs=False):
     """
     Обрабатывает HTML-контент EPUB-файла, разбивая длинные абзацы на меньшие.
 
@@ -379,6 +386,7 @@ def process_epub_html(html_content, max_len=10, merge_before_splitting=False):
     :param html_content: Строка с HTML-контентом EPUB-файла.
     :param line_len: Целое число, определяющее количество слов в строке при разбиении (по умолчанию 10).
     :param merge_before_splitting: Признак того, что необходимо объединить абзацы в один перед дальнейшим разбиением (по умолчанию False).
+    :param split_dialogs: Признак того, нужно ли разбивать абзацы-реплики диалогов.
     :return: Обновлённый HTML-контент с разбитыми абзацами.
     """
     # Парсим HTML с помощью BeautifulSoup
@@ -391,7 +399,14 @@ def process_epub_html(html_content, max_len=10, merge_before_splitting=False):
     for paragraph in soup.find_all('p'):
         # Получаем текст абзаца с сохранением всех вложенных тегов
         paragraph_html = ''.join(str(child) for child in paragraph.children)
-        
+
+        # Если нельзя разбивать абзацы-реплики диалогов, то проверяем, начинается ли 
+        # текст абзаца с дефиса или тире
+        if not split_dialogs:
+            paragraph_text = paragraph.get_text().lstrip()  # Убираем любые пробелы и табуляции в начале текста
+            if re.match(r'^[-–—]', paragraph_text):  # Проверяем на дефис или тире
+                continue  # Пропускаем разбиение для этого абзаца
+
         if count_words(paragraph_html) <= max_len:
             continue
 
@@ -441,7 +456,7 @@ def process_epub_html(html_content, max_len=10, merge_before_splitting=False):
     # Возвращаем обновленный HTML
     return str(soup)
 
-def process_epub(epub_path, max_len=10, merge_before_splitting=False, backuping=False):
+def process_epub(epub_path, max_len=10, merge_before_splitting=False, split_dialogs=False, backuping=False):
     """
     Обрабатывает EPUB файл, находя все HTML файлы внутри него, применяет функцию форматирования
     к их содержимому и перезаписывает оригинальное содержимое отформатированной версией.
@@ -477,7 +492,7 @@ def process_epub(epub_path, max_len=10, merge_before_splitting=False, backuping=
                     with open(file_path, 'r', encoding='utf-8') as f:
                         content = f.read()
                     # Форматируем содержимое и перезаписываем старое отфрматированным
-                    formatted_content = process_epub_html(content, max_len, merge_before_splitting)
+                    formatted_content = process_epub_html(content, max_len, merge_before_splitting, split_dialogs)
                     with open(file_path, 'w', encoding='utf-8') as f:
                         f.write(formatted_content)
         

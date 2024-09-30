@@ -345,9 +345,40 @@ class TestProcessEpubHtml(unittest.TestCase):
         # Проверяем, что результат содержит несколько абзацев <p>
         soup = BeautifulSoup(result, 'html.parser')
         paragraphs = soup.find_all('p')
-        print(paragraphs)
         self.assertTrue(len(paragraphs) > 1)
-        # Дополнительные проверки можно добавить по необходимости
+    
+    def test_dialogs_paragraph_split_with_merging(self):
+        html_content = '''
+            <p class="p1">– Добрый вечер, доктор Хэмфрис, – сказал Пларр.</p>
+            <p class="p1">  – Значит, вы нашли мою записку?</p> 
+            <p class="p1"> – Да я все равно заглянул бы сюда. Откуда вы знали, что я к вам приду?</p>'''
+        result = process_epub_html(html_content, max_len=1, merge_before_splitting=True)
+        # Проверяем, что результат содержит несколько абзацев <p>
+        soup = BeautifulSoup(result, 'html.parser')
+        paragraphs = soup.find_all('p')
+        self.assertTrue(len(paragraphs) == 3)
+    
+    def test_dialogs_paragraph_split_without_merging(self):
+        html_content = '''
+            <p class="p1">– Добрый вечер, доктор Хэмфрис, – сказал Пларр.</p>
+            <p class="p1"> – Значит, вы нашли мою записку?</p> 
+            <p class="p1">  – Да я все равно заглянул бы сюда. Откуда вы знали, что я к вам приду?</p>'''
+        result = process_epub_html(html_content, max_len=1, merge_before_splitting=False)
+        # Проверяем, что результат содержит несколько абзацев <p>
+        soup = BeautifulSoup(result, 'html.parser')
+        paragraphs = soup.find_all('p')
+        self.assertTrue(len(paragraphs) == 3)
+    
+    def test_dialogs_paragraph_split_true(self):
+        html_content = '''
+            <p class="p1">– Добрый вечер, доктор Хэмфрис, – сказал Пларр.</p>
+            <p class="p1"> – Значит, вы нашли мою записку? Гады.</p> 
+            <p class="p1">  – Да я все равно заглянул бы сюда. Откуда вы знали, что я к вам приду?</p>'''
+        result = process_epub_html(html_content, max_len=5, split_dialogs=True)
+        # Проверяем, что результат содержит несколько абзацев <p>
+        soup = BeautifulSoup(result, 'html.parser')
+        paragraphs = soup.find_all('p')
+        self.assertTrue(len(paragraphs) == 5)
 
     def test_paragraph_with_tags(self):
         html_content = '<p>Текст с <b>жирным</b> и <i>курсивом</i>. Это предложение должно быть вместе с предыдущим.</p>'
@@ -451,6 +482,18 @@ class TestMergeAdjacentParagraphs(unittest.TestCase):
         paragraphs = soup.find_all('p')
         # Ожидаем 2 абзаца, так как они на разных уровнях
         self.assertEqual(len(paragraphs), 2)
+    
+    def test_no_merge_dialogs(self):
+        html_content = '''
+        <p class="p1">   – Добрый вечер, доктор Хэмфрис, – сказал Пларр.</p>
+        <p class="p1"> - Значит, вы нашли мою записку?</p>
+        <p class="p1">– Да я все равно заглянул бы сюда. Откуда вы знали, что я к вам приду?</p>
+        '''
+        soup = BeautifulSoup(html_content, 'html.parser')
+        merge_adjacent_paragraphs(soup)
+        paragraphs = soup.find_all('p')
+        # Ожидаем 2 абзаца, так как они на разных уровнях
+        self.assertEqual(len(paragraphs), 3)
 
 if __name__ == '__main__':
     unittest.main()

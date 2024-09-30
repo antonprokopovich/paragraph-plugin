@@ -5,7 +5,7 @@ import chardet
 # from nltk import tokenize
 
 from calibre.customize import FileTypePlugin
-from .config import get_words_per_line, plugin_prefs, get_merge_paragraphs
+from .config import get_words_per_line, plugin_prefs, get_merge_paragraphs, get_split_dialogs
 from .epub_split import process_epub
 
 from PyQt5.Qt import QWidget, QVBoxLayout, QLabel, QSpinBox, QCheckBox
@@ -13,7 +13,7 @@ from PyQt5.Qt import QWidget, QVBoxLayout, QLabel, QSpinBox, QCheckBox
 DEBUG = False
 DEBUGGER_PORT = 5555
 
-VERSION = (1, 0, 34)
+VERSION = (1, 0, 38)
 
 if DEBUG:
     from calibre.rpdb import set_trace
@@ -44,6 +44,10 @@ class ConfigWidget(QWidget):
         self.merge_paragraphs_checkbox = QCheckBox('Объединить все абзацы перед разбиением')
         layout.addWidget(self.merge_paragraphs_checkbox)
 
+        # Добавляем чекбокс для флага разбиенияабзацев диалога
+        self.split_dialogs_checkbox = QCheckBox('Разбивать абзацы диалогов')
+        layout.addWidget(self.split_dialogs_checkbox)
+
         self.setLayout(layout)
 
 
@@ -64,6 +68,7 @@ class SplitParagraphsPlugin(FileTypePlugin):
         widget = ConfigWidget()
         widget.words_per_line_spinbox.setValue(get_words_per_line())
         widget.merge_paragraphs_checkbox.setChecked(get_merge_paragraphs())
+        widget.split_dialogs_checkbox.setChecked(get_split_dialogs())
 
         return widget
 
@@ -71,6 +76,7 @@ class SplitParagraphsPlugin(FileTypePlugin):
         # Сохраняем новые значения настроек
         plugin_prefs['words_per_line'] = config_widget.words_per_line_spinbox.value()
         plugin_prefs['merge_before_splitting'] = config_widget.merge_paragraphs_checkbox.isChecked()
+        plugin_prefs['split_dialogs'] = config_widget.split_dialogs_checkbox.isChecked()
 
     def run(self, path_to_ebook):
         self.split_book(path_to_ebook)
@@ -113,6 +119,7 @@ class SplitParagraphsPlugin(FileTypePlugin):
 
         words_per_line = get_words_per_line()
         merge_paragraphs = get_merge_paragraphs()
+        split_dialogs = get_split_dialogs()
 
         logging.info(f"[Split paragraphs plugin] words per line: {words_per_line}, merge_paragraphs: {merge_paragraphs}")
 
@@ -129,7 +136,7 @@ class SplitParagraphsPlugin(FileTypePlugin):
             if ext == ".txt":
                 self.split_txt_book(path_to_ebook)
             elif ext == ".epub":
-                process_epub(path_to_ebook, words_per_line, merge_paragraphs)
+                process_epub(path_to_ebook, words_per_line, merge_paragraphs, split_dialogs)
 
         except Exception as e:
             logging.exception(f"[Split paragraphs plugin] An error occurred: {e}")
