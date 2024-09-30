@@ -25,7 +25,7 @@ class Token:
         return f"Token(text={self.text!r}, is_word={self.is_word})"
 
 
-def tokenize_paragraph(paragraph_text) -> List[Token]:
+def tokenize_text(text) -> List[Token]:
     """
     Разбивает текст на токены (слова), учитывая что:
       * бывают токены-слова и остальные токены (теги, сноски, разделительные символы, знаки пунктуации);
@@ -35,7 +35,7 @@ def tokenize_paragraph(paragraph_text) -> List[Token]:
       * внутри тегов (после объявления `<tagName` и до `>` все токены НЕ являются словами (то есть 
         технически названия и значения аттрибутов - это не слова);
     
-    :param paragraph_text: Текст абзаца для разбиения.
+    :param text: Текст для разбиения.
     :return: Список токенов, каждый из которых содержит мета-данные (является ли он читаемым словом).
     """
     tokens = []  # Инициализируем пустой список для хранения токенов
@@ -70,9 +70,9 @@ def tokenize_paragraph(paragraph_text) -> List[Token]:
     pattern = re.compile(combined_pattern, re.UNICODE)
     
     pos = 0  # Начальная позиция в тексте
-    while pos < len(paragraph_text):
+    while pos < len(text):
         # Ищем совпадение с любым из наших паттернов, начиная с текущей позиции
-        match = pattern.match(paragraph_text, pos)
+        match = pattern.match(text, pos)
         if match:
             token_text = match.group(0)  # Получаем текст найденного токена
             # Определяем тип токена, проверяя, какая группа захвата сработала
@@ -90,60 +90,19 @@ def tokenize_paragraph(paragraph_text) -> List[Token]:
         else:
             # Если символ не соответствует ни одному из паттернов,
             # мы считаем его отдельным токеном (например, неизвестный или специальный символ)
-            token_text = paragraph_text[pos]
+            token_text = text[pos]
             tokens.append(Token(token_text, is_word=False))  # Помечаем его как не слово
             pos += 1  # Перемещаем позицию на один символ
     return tokens  # Возвращаем список токенов
 
-def split_paragraph_into_lines(paragraph_text, line_len):
-    """
-    Разбивает текст абзаца на строки, содержащие по line_len слов.
+def count_words(text):
+    words_count = 0
 
-    :param paragraph_text: Текст абзаца для разбиения.
-    :param line_len: Количество слов в каждой строке (должно быть положительным целым числом).
-    :return: Список строк, каждая из которых содержит line_len слов.
-    :raises ValueError: Если line_len не является положительным целым числом.
-    """
-    if not isinstance(line_len, int) or line_len <= 0:
-        raise ValueError("line_len должно быть положительным целым числом.")
-
-    tokens = tokenize_paragraph(paragraph_text)
-    lines = []
-    current_line_tokens = []
-    word_count = 0
-    idx = 0
-    total_tokens = len(tokens)
-
-    while idx < total_tokens:
-        token = tokens[idx]
-        current_line_tokens.append(token)
-
+    for token in tokenize_text(text):
         if token.is_word:
-            word_count += 1
-            idx += 1
+            words_count += 1
 
-            if word_count == line_len:
-                # После достижения нужного количества слов, добавляем последующие токены-неслова
-                while idx < total_tokens and not tokens[idx].is_word:
-                    current_line_tokens.append(tokens[idx])
-                    idx += 1
-
-                # Собираем текущую линию в строку и добавляем в список
-                line_text = ''.join(t.text for t in current_line_tokens)
-                lines.append(line_text)
-
-                # Сбрасываем счетчики для следующей строки
-                current_line_tokens = []
-                word_count = 0
-        else:
-            idx += 1
-
-    # Добавляем оставшиеся токены как последнюю строку, если они есть
-    if current_line_tokens:
-        line_text = ''.join(t.text for t in current_line_tokens)
-        lines.append(line_text)
-
-    return lines
+    return words_count
 
 # Списки сокращений, после которых пунктуационные знаки не всегда могут считаться знаками, завершающими предложение
 
@@ -399,14 +358,13 @@ def merge_adjacent_paragraphs(soup):
             # Переходим к следующей паре тегов
             i += 1
 
-def process_epub_html(html_content, line_len=10, merge_before_splitting=False):
+def process_epub_html(html_content, max_len=10, merge_before_splitting=False):
     """
     Обрабатывает HTML-контент EPUB-файла, разбивая длинные абзацы на меньшие.
 
     Функция ищет все теги <p> в HTML-контенте и разбивает длинные абзацы на меньшие,
     основываясь на количестве строк, полученных после разбиения по словам.
-    Если абзац содержит более 4 строк после разбиения по line_len слов в строке,
-    он разбивается на несколько абзацев.
+    Если абзац содержит более max_len слов, то он разбивается на несколько абзацев.
 
     Разбиение происходит следующим образом:
     - Абзац разбивается на предложения с учётом пунктуации и специальных случаев.
@@ -434,23 +392,12 @@ def process_epub_html(html_content, line_len=10, merge_before_splitting=False):
         # Получаем текст абзаца с сохранением всех вложенных тегов
         paragraph_html = ''.join(str(child) for child in paragraph.children)
         
-        # Разбиваем текст на строки по line_len токенов, чтобы вести их подсчет
-        lines = split_paragraph_into_lines(paragraph_html, line_len)
-
-        # Если в абзаце меньше или ровно 4 строки, то его не нужно разбивать
-        if len(lines) <= 4:
+        if count_words(paragraph_html) <= max_len:
             continue
 
-        # Начинаем разбиение длинного абзаца через разбиение его на предложения
-        # и подсчет количества строк в каждом предложении.
-        # Основная идея алгоритма в том, что мы можем добавлять в новый абзац
-        # очередное предложение до тех пор, пока суммарное количество строк от
-        # всех накопленных предложений не станет равно или больше, чем нужно.
-        # Как только такой момент настал - добавляем новый абзац к существующим
-        # и начинаем копить предложения и считать строки заново - в уже новый абзац.
         new_paragraphs = []
         current_paragraph_sentences = []
-        current_paragraph_line_count = 0
+        current_paragraph_words_count = 0
 
         # Разбиваем абзац на законченные предложения
         sentences = split_paragraph_into_sentences(paragraph_html)
@@ -458,26 +405,19 @@ def process_epub_html(html_content, line_len=10, merge_before_splitting=False):
         for sentence in sentences:
             # Добавляем предложение в текущий буфер абзаца
             current_paragraph_sentences.append(sentence)
+            current_paragraph_words_count += count_words(sentence)
 
-            # Формируем текущий абзац из накопленных предложений
-            current_paragraph_html = ' '.join(current_paragraph_sentences)
-
-            # Разбиваем текущий абзац на строки для подсчета их количества
-            current_lines = split_paragraph_into_lines(current_paragraph_html, line_len)
-            current_line_count = len(current_lines)
-
-            # Проверяем, достигло ли количество строк в текущем абзаце желаемого значения (например, 4)
-            if current_line_count >= 4:
+            # Проверяем, достигло ли количество слов в буфферном абзаце максимального
+            if current_paragraph_words_count >= max_len:
                 # Добавляем текущий абзац в список новых абзацев
-                new_paragraphs.append(current_paragraph_html)
+                new_paragraphs.append(' '.join(current_paragraph_sentences))
                 # Сбрасываем буферы для формирования следующего абзаца
                 current_paragraph_sentences = []
-                current_paragraph_line_count = 0
+                current_paragraph_words_count = 0
 
         # Если остались накопленные предложения, формируем из них последний абзац
-        if current_paragraph_sentences:
-            current_paragraph_html = ''.join(current_paragraph_sentences)
-            new_paragraphs.append(current_paragraph_html)
+        if len(current_paragraph_sentences) > 0:
+            new_paragraphs.append(' '.join(current_paragraph_sentences))
 
         # Если был разрыв (абзац разбился на более мелкие), создаем новые теги <p> и добавляем их в HTML
         if len(new_paragraphs) > 1:
@@ -501,14 +441,14 @@ def process_epub_html(html_content, line_len=10, merge_before_splitting=False):
     # Возвращаем обновленный HTML
     return str(soup)
 
-def process_epub(epub_path, line_len=10, merge_before_splitting=False, backuping=False):
+def process_epub(epub_path, max_len=10, merge_before_splitting=False, backuping=False):
     """
     Обрабатывает EPUB файл, находя все HTML файлы внутри него, применяет функцию форматирования
     к их содержимому и перезаписывает оригинальное содержимое отформатированной версией.
 
     Аргументы:
         epub_path (str): Путь к .epub файлу для обработки.
-        line_len (int): Максимальное количество слов в строке абзацев.
+        max_len (int): Максимальное количество слов в абзаце.
         merge_before_splitting (bool): Признак того, что необходимо объединить абзацы в один перед дальнейшим разбиением.
         backuping (bool): Признак того, что необходимо создать резервную копию оригинального EPUB файла.
 
@@ -537,10 +477,9 @@ def process_epub(epub_path, line_len=10, merge_before_splitting=False, backuping
                     with open(file_path, 'r', encoding='utf-8') as f:
                         content = f.read()
                     # Форматируем содержимое и перезаписываем старое отфрматированным
-                    formatted_content = process_epub_html(content, line_len, merge_before_splitting)
+                    formatted_content = process_epub_html(content, max_len, merge_before_splitting)
                     with open(file_path, 'w', encoding='utf-8') as f:
                         f.write(formatted_content)
-        
         
         # Сначала делаем резервную копию оригинального файла, если был передан параметр
         if backuping:
@@ -561,7 +500,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Обработка EPUB файла и форматирование его HTML содержимого.')
     parser.add_argument('epub_path', help='Путь к EPUB файлу для обработки.')
-    parser.add_argument('-l', '--line_len', type=int, default=10, help='Максимальное количество слов в строке абзацев.')
+    parser.add_argument('-l', '--len', type=int, default=10, help='Максимальное количество слов в абзаце.')
     parser.add_argument('-m', '--merge', action='store_true', help='Объединить все абзацы перед последующим разбиением.')
     parser.add_argument('-b', '--backup', action='store_true', help='Делать ли backup перед форматированием.')
 

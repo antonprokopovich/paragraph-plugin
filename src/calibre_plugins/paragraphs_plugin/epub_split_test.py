@@ -5,7 +5,7 @@ from epub_split import *
 class TestTokenizeParagraph(unittest.TestCase):
     def test_spaces_and_nbsp(self):
         paragraph = 'Слово1\u00A0Слово2 Слово3'
-        tokens = tokenize_paragraph(paragraph)
+        tokens = tokenize_text(paragraph)
         expected = [
             Token('Слово1', True),
             Token('\u00A0', False),
@@ -17,7 +17,7 @@ class TestTokenizeParagraph(unittest.TestCase):
 
     def test_tags(self):
         paragraph = 'Текст с тегом<tag attr="value">и после</tag> тега.'
-        tokens = tokenize_paragraph(paragraph)
+        tokens = tokenize_text(paragraph)
         expected = [
             Token('Текст', True),
             Token(' ', False),
@@ -37,7 +37,7 @@ class TestTokenizeParagraph(unittest.TestCase):
 
     def test_punctuation(self):
         paragraph = 'Он сказал: "Привет!" и зачем-то ушёл.'
-        tokens = tokenize_paragraph(paragraph)
+        tokens = tokenize_text(paragraph)
         expected = [
             Token('Он', True),
             Token(' ', False),
@@ -60,7 +60,7 @@ class TestTokenizeParagraph(unittest.TestCase):
 
     def test_parentheses(self):
         paragraph = 'Это пример (с текстом) в скобках.'
-        tokens = tokenize_paragraph(paragraph)
+        tokens = tokenize_text(paragraph)
         expected = [
             Token('Это', True),
             Token(' ', False),
@@ -81,7 +81,7 @@ class TestTokenizeParagraph(unittest.TestCase):
 
     def test_inside_tags(self):
         paragraph = '<tagName attribute="value">Содержимое тега</tagName>'
-        tokens = tokenize_paragraph(paragraph)
+        tokens = tokenize_text(paragraph)
         expected = [
             Token('<tagName attribute="value">', False),
             Token('Содержимое', True),
@@ -93,7 +93,7 @@ class TestTokenizeParagraph(unittest.TestCase):
 
     def test_mixed_content(self):
         paragraph = 'Текст\u00A0с тегом <tag>и (символами), например: "пример".'
-        tokens = tokenize_paragraph(paragraph)
+        tokens = tokenize_text(paragraph)
         expected = [
             Token('Текст', True),
             Token('\u00A0', False),
@@ -118,206 +118,6 @@ class TestTokenizeParagraph(unittest.TestCase):
             Token('.', False),
         ]
         self.assertEqual(tokens, expected)
-
-class TestSplitParagraphIntoLines(unittest.TestCase):
-    def test_simple_split(self):
-        paragraph = 'Слово1 Слово2 Слово3 Слово4 Слово5'
-        line_len = 2
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Слово1 Слово2 ',
-            'Слово3 Слово4 ',
-            'Слово5'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_with_punctuation(self):
-        paragraph = 'Он сказал: "Привет!" И ушёл.'
-        line_len = 3
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Он сказал: "Привет!" ',
-            'И ушёл.'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_with_hyphenated_words(self):
-        paragraph = 'Это нью-йоркский музей и зачем-то написанные слова.'
-        line_len = 2
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Это нью-йоркский ',
-            'музей и ',
-            'зачем-то написанные ',
-            'слова.'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_with_tags_and_spaces(self):
-        paragraph = 'Текст с тегом<tag>и символами.'
-        line_len = 2
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Текст с ',
-            'тегом<tag>и ',
-            'символами.'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_line_len_one(self):
-        paragraph = 'Одно слово. Второе слово.'
-        line_len = 1
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Одно ',
-            'слово. ',
-            'Второе ',
-            'слово.'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_no_words(self):
-        paragraph = '!!! *** ???'
-        line_len = 2
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            '!!! *** ???'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_empty_paragraph(self):
-        paragraph = ''
-        line_len = 3
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = []
-        self.assertEqual(lines, expected)
-
-    def test_line_len_zero(self):
-        paragraph = 'Это тест с line_len = 0.'
-        line_len = 0
-        with self.assertRaises(ValueError):
-            lines = split_paragraph_into_lines(paragraph, line_len)
-
-    def test_non_integer_line_len(self):
-        paragraph = 'Тест с нецелым значением line_len.'
-        line_len = 2.5
-        with self.assertRaises(ValueError):
-            lines = split_paragraph_into_lines(paragraph, line_len)
-
-    def test_mixed_language(self):
-        paragraph = 'This is a test смешанного текста with multiple languages.'
-        line_len = 4
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'This is a test ',
-            'смешанного текста with multiple ',
-            'languages.'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_paragraph_with_numbers(self):
-        paragraph = 'У него было 10 яблок и 20 груш.'
-        line_len = 3
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'У него было ',
-            '10 яблок и ',
-            '20 груш.'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_paragraph_with_long_word(self):
-        paragraph = 'Это слово-сверхдлинное-и-никогда-не-оканчивающееся'
-        line_len = 1
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Это ',
-            'слово-сверхдлинное-и-никогда-не-оканчивающееся'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_paragraph_with_multiple_spaces(self):
-        paragraph = 'Это  текст   с    множественными     пробелами.'
-        line_len = 3
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Это  текст   с    ',
-            'множественными     пробелами.'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_paragraph_with_newlines(self):
-        paragraph = 'Первая строка.\nВторая строка.\n\nТретья строка.'
-        line_len = 2
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Первая строка.\n',
-            'Вторая строка.\n\n',
-            'Третья строка.'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_paragraph_with_tabs(self):
-        paragraph = 'Слово1\tСлово2\t\tСлово3'
-        line_len = 2
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Слово1\tСлово2\t\t',
-            'Слово3'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_paragraph_with_nbsp(self):
-        paragraph = 'Слово1\u00A0Слово2\u00A0\u00A0Слово3'
-        line_len = 2
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Слово1\u00A0Слово2\u00A0\u00A0',
-            'Слово3'
-        ]
-        self.assertEqual(lines, expected)
-    
-    def test_paragraph_with_tags(self):
-        paragraph = 'Текст с <b> жирным</b> тегом и <i> курсивом</i>.'
-        line_len = 3
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Текст с <b> жирным</b> ',
-            'тегом и <i> курсивом</i>.',
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_paragraph_with_nested_tags(self):
-        paragraph = 'Начало <div> <p> Параграф с <span> вложенными </span> тегами</p></div> Конец.'
-        line_len = 2
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Начало <div> <p> Параграф ',
-            'с <span> вложенными </span> ',
-            'тегами</p></div> Конец.'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_paragraph_with_tags_without_spaces(self):
-        paragraph = 'Текст с<tag>тегом</tag>внутри слова.'
-        line_len = 2
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            'Текст с<tag>',
-            'тегом</tag>внутри ',
-            'слова.'
-        ]
-        self.assertEqual(lines, expected)
-
-    def test_paragraph_with_attributes_in_tags(self):
-        paragraph = '<p class="text">Это пример с тегами</p> и атрибутами.'
-        line_len = 3
-        lines = split_paragraph_into_lines(paragraph, line_len)
-        expected = [
-            '<p class="text">Это пример с ',
-            'тегами</p> и атрибутами.'
-        ]
-        self.assertEqual(lines, expected)
 
 class TestSplitParagraphIntoSentences(unittest.TestCase):
     def test_simple_sentences(self):
@@ -536,21 +336,22 @@ class TestProcessEpubHtml(unittest.TestCase):
     def test_short_paragraph(self):
         html_content = '<p>Это короткий абзац с небольшим количеством слов.</p>'
         expected_output = '<p>Это короткий абзац с небольшим количеством слов.</p>'
-        result = process_epub_html(html_content, line_len=5)
+        result = process_epub_html(html_content, max_len=20)
         self.assertEqual(result.strip(), expected_output)
 
     def test_long_paragraph_split(self):
         html_content = '<p>Это очень длинный абзац, который содержит много предложений. Первое предложение. Второе предложение, которое немного длиннее первого. Третье предложение с некоторым количеством слов. Четвёртое предложение, которое, возможно, превысит лимит строк. Пятое и последнее предложение в этом абзаце.</p>'
-        result = process_epub_html(html_content, line_len=5)
+        result = process_epub_html(html_content, max_len=20)
         # Проверяем, что результат содержит несколько абзацев <p>
         soup = BeautifulSoup(result, 'html.parser')
         paragraphs = soup.find_all('p')
+        print(paragraphs)
         self.assertTrue(len(paragraphs) > 1)
         # Дополнительные проверки можно добавить по необходимости
 
     def test_paragraph_with_tags(self):
         html_content = '<p>Текст с <b>жирным</b> и <i>курсивом</i>. Это предложение должно быть вместе с предыдущим.</p>'
-        result = process_epub_html(html_content, line_len=3)
+        result = process_epub_html(html_content, max_len=12)
         soup = BeautifulSoup(result, 'html.parser')
         paragraphs = soup.find_all('p')
         # Проверяем, что тег <b> и <i> сохранены
@@ -559,7 +360,7 @@ class TestProcessEpubHtml(unittest.TestCase):
 
     def test_paragraph_with_attributes(self):
         html_content = '<p class="text">Абзац с атрибутом класса. Длинный текст, который должен быть разбит на несколько абзацев.</p>'
-        result = process_epub_html(html_content, line_len=5)
+        result = process_epub_html(html_content, max_len=20)
         soup = BeautifulSoup(result, 'html.parser')
         paragraphs = soup.find_all('p')
         # Проверяем, что атрибут класса сохранён во всех новых абзацах
@@ -569,7 +370,7 @@ class TestProcessEpubHtml(unittest.TestCase):
     def test_no_paragraphs(self):
         html_content = '<div>Текст без тегов абзацев.</div>'
         expected_output = '<div>Текст без тегов абзацев.</div>'
-        result = process_epub_html(html_content, line_len=5)
+        result = process_epub_html(html_content, max_len=20)
         self.assertEqual(result.strip(), expected_output)
 
 class TestMergeAdjacentParagraphs(unittest.TestCase):

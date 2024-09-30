@@ -13,7 +13,7 @@ from PyQt5.Qt import QWidget, QVBoxLayout, QLabel, QSpinBox, QCheckBox
 DEBUG = False
 DEBUGGER_PORT = 5555
 
-VERSION = (1, 0, 32)
+VERSION = (1, 0, 34)
 
 if DEBUG:
     from calibre.rpdb import set_trace
@@ -31,7 +31,7 @@ class ConfigWidget(QWidget):
         layout = QVBoxLayout()
 
         # Добавляем текстовое описание
-        label = QLabel('Количество слов в строке:')
+        label = QLabel('Количество слов в абзаце:')
         layout.addWidget(label)
 
         # Добавляем виджет выбора числа слов в строке
